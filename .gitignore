@@ -1,0 +1,11 @@
+﻿# Python cache
+__pycache__/
+*.pyc
+
+# Plots / results
+results/
+*.png
+
+# OS junk
+.DS_Store
+Thumbs.db
