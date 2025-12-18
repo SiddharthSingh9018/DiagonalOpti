@@ -1,23 +1,26 @@
 import numpy as np
 
+from optimizer.curvature import symmetric_antisymmetric_split
+from optimizer.utils import project_to_ball
+
 
 def sa_rsvd_tr_optimizer(
     f,
     grad_f,
     x0,
-    k=3,                 # target rank
-    oversample=4,        # RSVD oversampling
+    k=3,
+    oversample=4,
     lr=1.0,
-    R0=1.0,              # initial trust radius
-    R_max=5.0,           # maximum trust radius
-    gamma_trust=1.0,     # antisymmetry-based shrink strength
-    beta_S=0.2,          # EMA factor for symmetric curvature
-    drift_thresh=0.5,    # subspace drift threshold
-    c_noise=1.0,         # noise-aware damping factor
-    lambda_min=1e-3,     # minimum eigenvalue floor
-    alpha_residual=0.1,  # residual gradient weight
-    antisymm_gate=2.0,   # fallback threshold
-    alpha_fallback=0.2,  # gradient fallback step size
+    R0=1.0,
+    R_max=5.0,
+    gamma_trust=1.0,
+    beta_S=0.2,
+    drift_thresh=0.5,
+    c_noise=1.0,
+    lambda_min=1e-3,
+    alpha_residual=0.1,
+    antisymm_gate=2.0,
+    alpha_fallback=0.2,
     tol=1e-6,
     max_iter=2000,
 ):
@@ -45,8 +48,7 @@ def sa_rsvd_tr_optimizer(
         losses.append(f_old)
 
         g = grad_f(x)
-        g_norm = np.linalg.norm(g)
-        if g_norm < tol:
+        if np.linalg.norm(g) < tol:
             break
 
         # --------------------------------------------------
@@ -69,10 +71,9 @@ def sa_rsvd_tr_optimizer(
         B = Q.T @ HQ
 
         # --------------------------------------------------
-        # Symmetric / antisymmetric split
+        # Symmetric / antisymmetric split (USING curvature.py)
         # --------------------------------------------------
-        S = 0.5 * (B + B.T)
-        A = 0.5 * (B - B.T)
+        S, A = symmetric_antisymmetric_split(B)
 
         S_norm = np.linalg.norm(S, "fro") + 1e-12
         A_norm = np.linalg.norm(A, "fro")
@@ -132,15 +133,10 @@ def sa_rsvd_tr_optimizer(
             p = newton_dir - alpha_residual * g
 
         # --------------------------------------------------
-        # Trust-region projection
+        # Trust-region projection (USING utils.py)
         # --------------------------------------------------
-        p_norm = np.linalg.norm(p)
-        R_eff = R_tr / (1.0 + gamma_trust * rho_antisymm)
-        R_eff = max(R_eff, 1e-12)
-
-        if p_norm > R_eff:
-            p *= R_eff / (p_norm + 1e-12)
-            p_norm = R_eff
+        R_eff = max(R_tr / (1.0 + gamma_trust * rho_antisymm), 1e-12)
+        p = project_to_ball(p, R_eff)
 
         step = lr * p
         x_trial = x + step
@@ -160,7 +156,7 @@ def sa_rsvd_tr_optimizer(
         # --------------------------------------------------
         if rho_model < 0.25:
             R_tr *= 0.5
-        elif rho_model > 0.75 and p_norm > 0.8 * R_eff:
+        elif rho_model > 0.75:
             R_tr = min(1.5 * R_tr, R_max)
 
         if rho_model > 0.0:
