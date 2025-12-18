@@ -28,24 +28,28 @@ The goal is stability and interpretability rather than raw speed.
 ---
 
 ## Repository Structure
-
+<pre>
 DiagonalOpti/
 ├── optimizer/
-│ ├── optimizer.py # S/A RSVD TR optimizer
-│ ├── curvature.py # curvature decomposition utilities
-│ ├── utils.py # trust-region and projection helpers
+│   ├── optimizer.py      # S/A–RSVD–TR curvature-aware optimizer
+│   ├── curvature.py      # symmetric / antisymmetric curvature utilities
+│   └── utils.py          # trust-region projection and helper routines
 │
 ├── baselines/
-│ ├── sgd.py
-│ ├── adam.py
-│ └── rmsprop.py
+│   ├── sgd.py            # SGD with momentum
+│   ├── adam.py           # Adam optimizer
+│   └── rmsprop.py        # RMSProp optimizer
 │
 ├── experiments/
-│ ├── synthetic_benchmarks.py # quadratics + Rosenbrock
-│ └── logistic_regression.py # convex ML objective
+│   ├── synthetic_benchmarks.py   # quadratics (well/ill-conditioned) + Rosenbrock
+│   └── logistic_regression.py    # convex ML benchmark
 │
-├── paper/ # draft notes / writeup
-└── results/ # plots (not tracked)
+├── paper/                # draft notes / write-up
+├── results/              # plots and outputs (not tracked)
+├── .gitignore
+└── README.md
+
+</pre>
 
 ## Benchmarks
 
