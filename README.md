@@ -7,7 +7,7 @@ optimization algorithm that combines low-rank curvature estimation, trust region
 step-size stabilization to improve robustness under minibatch stochasticity. Unlike Adam or
 momentum-based methods, Diagonal((S/A RSVD TR)) explicitly models local curvature through a rank-k eigenspace
 approximation of the Hessian, enabling a computationally efficient Newton-like step in that subspace
-while preserving adaptive diagonal scaling elsewhere. Diagonal((S/A RSVD TR)) also incorporates a trust-region
+while preserving adaptive diagonal scaling elsewhere.  incorporating a trust-region
 mechanism based on the ratio of predicted to actual decrease, and introduces the antisymmetric
 curvature floor, a technique to prevent step collapse when Hessian estimates are noisy
 The project focuses on understanding how local curvature structure and
@@ -76,6 +76,22 @@ The optimizer is evaluated against standard baselines on:
 
 All experiments use identical initializations and objective definitions
 to ensure fair comparison.
+\subsection*{Future Work}
+
+Conditioner’s dominant computational overhead arises from the 
+O(Nk) Hessian--vector product block required for the 
+spectral curvature sketch. Reducing this cost is an important direction for 
+improvement. Possible approaches include structured random sketches, 
+sub-sampled curvature estimators, and GPU-efficient batching of HVP 
+computations, all of which may preserve the quality of the low-rank curvature 
+approximation while lowering per-step cost.
+Scaling Conditioner to large modern architectures such as Transformers, CNNs,
+or diffusion models will require further architectural optimization.
+In particular, methods for distributing or decomposing curvature across layers
+Rather than forming a single \(N\)-dimensional sketch could improve memory
+efficiency and reduce computation. Parallel HVP pipelines or block-diagonal
+curvature representations may also help avoid the need for global curvature
+sketches when \(N\) becomes extremely large.
 
 ---
 
