@@ -77,8 +77,7 @@ The optimizer is evaluated against standard baselines on:
 All experiments use identical initializations and objective definitions
 to ensure fair comparison.
 \subsection*{Future Work}
-
-Conditioner’s dominant computational overhead arises from the 
+optimizer’s dominant computational overhead arises from the 
 O(Nk) Hessian--vector product block required for the 
 spectral curvature sketch. Reducing this cost is an important direction for 
 improvement. Possible approaches include structured random sketches, 
