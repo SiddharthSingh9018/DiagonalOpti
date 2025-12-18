@@ -1,10 +1,15 @@
 # DiagonalCurvatureOptimizer
 
 
-DiagonalOpti explores a curvature-aware optimization method based on
-low-rank randomized Hessian approximation with explicit separation of
-symmetric and antisymmetric curvature components.
-
+The optimizer leverages the fact that performing updates in a diagonalized
+curvature basis is significantly cheaper than operating in the full parameter space.The
+optimization algorithm that combines low-rank curvature estimation, trust region control, and noiseaware
+step-size stabilization to improve robustness under minibatch stochasticity. Unlike Adam or
+momentum-based methods, Diagonal((S/A RSVD TR)) explicitly models local curvature through a rank-k eigenspace
+approximation of the Hessian, enabling a computationally efficient Newton-like step in that subspace
+while preserving adaptive diagonal scaling elsewhere. Diagonal((S/A RSVD TR)) also incorporates a trust-region
+mechanism based on the ratio of predicted to actual decrease, and introduces the antisymmetric
+curvature floor, a technique to prevent step collapse when Hessian estimates are noisy
 The project focuses on understanding how local curvature structure and
 non-symmetric effects influence optimization dynamics, especially on
 ill-conditioned and nonconvex objectives.
@@ -56,9 +61,18 @@ DiagonalOpti/
 The optimizer is evaluated against standard baselines on:
 
 - Well-conditioned quadratic objectives
+- <img width="738" height="619" alt="image" src="https://github.com/user-attachments/assets/32c6dc7a-7aa9-4b75-a0b7-d718a25aaee7" />
+
 - Ill-conditioned quadratic objectives
-- Rosenbrock function (nonconvex)
+- <img width="733" height="615" alt="image" src="https://github.com/user-attachments/assets/7aaba51b-4d19-4b05-89cc-6724914b99e5" />
+  
+- Rosenbrock function
+- <img width="720" height="615" alt="image" src="https://github.com/user-attachments/assets/1af0376d-dad7-408d-b6d9-ef3662f9298f" />
+
+  
 - Binary logistic regression (convex ML task)
+- <img width="615" height="475" alt="image" src="https://github.com/user-attachments/assets/2d58857f-f0e4-4d8d-a659-5f944f2da86a" />
+
 
 All experiments use identical initializations and objective definitions
 to ensure fair comparison.
