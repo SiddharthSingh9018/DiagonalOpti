@@ -38,7 +38,7 @@ DiagonalOpti/
 ├── baselines/
 │   ├── sgd.py            # SGD with momentum
 │   ├── adam.py           # Adam optimizer
-│   └── rmsprop.py        # RMSProp optimizer
+│       
 │
 ├── experiments/
 │   ├── synthetic_benchmarks.py   # quadratics (well/ill-conditioned) + Rosenbrock
