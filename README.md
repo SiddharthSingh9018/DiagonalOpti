@@ -1,4 +1,4 @@
-# DiagonalOpti
+# DiagonalCurvatureOptimizer
 
 
 DiagonalOpti explores a curvature-aware optimization method based on
