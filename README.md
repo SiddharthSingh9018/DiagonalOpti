@@ -1,17 +1,66 @@
 # DiagonalCurvatureOptimizer
 
-DiagonalOptimiser is a research-oriented curvature-aware optimizer. It uses
-randomized low-rank Hessian approximation, spectral curvature directions,
-trust-region control, and noise-aware stabilization.
+The optimizer leverages the fact that performing updates in a diagonalized
+curvature basis is significantly cheaper than operating in the full parameter
+space. The optimization algorithm combines low-rank curvature estimation, trust
+region control, and noise-aware step-size stabilization to improve robustness
+under minibatch stochasticity.
 
-The intended claim is deliberately narrow:
+Unlike Adam or momentum-based methods, Diagonal((S/A RSVD TR)) explicitly
+models local curvature through a rank-k eigenspace approximation of the
+Hessian, enabling a computationally efficient Newton-like step in that subspace
+while preserving adaptive diagonal scaling elsewhere. It incorporates a
+trust-region mechanism based on the ratio of predicted to actual decrease, and
+introduces the antisymmetric curvature floor, a technique to prevent step
+collapse when Hessian estimates are noisy.
 
-> DiagonalOptimiser is a lightweight curvature-aware optimizer designed to
-> improve convergence and robustness on difficult optimization problems while
-> remaining competitive on neural network training.
+The project focuses on understanding how local curvature structure and
+non-symmetric effects influence optimization dynamics, especially on
+ill-conditioned and nonconvex objectives.
 
-This repository should not be read as claiming that DiagonalOptimiser always
-beats AdamW or is always faster.
+This is a research-oriented implementation, not a production library.
+
+---
+
+## Core Idea
+
+The proposed optimizer (S/A RSVD TR):
+
+- Approximates curvature using randomized low-rank Hessian sketches
+- Separates symmetric (useful curvature) and antisymmetric (noise / instability) components
+- Applies noise-aware eigenvalue damping
+- Uses a trust-region mechanism with hard step control
+- Falls back to gradient steps when curvature information becomes unreliable
+
+The goal is stability and interpretability rather than raw speed.
+
+---
+
+## Original Benchmark Results
+
+The optimizer was initially evaluated against standard baselines on:
+
+- Well-conditioned quadratic objectives
+
+<img width="738" height="619" alt="Well-conditioned quadratic benchmark" src="https://github.com/user-attachments/assets/32c6dc7a-7aa9-4b75-a0b7-d718a25aaee7" />
+
+- Ill-conditioned quadratic objectives
+
+<img width="733" height="615" alt="Ill-conditioned quadratic benchmark" src="https://github.com/user-attachments/assets/7aaba51b-4d19-4b05-89cc-6724914b99e5" />
+
+- Rosenbrock function
+
+<img width="720" height="615" alt="Rosenbrock benchmark" src="https://github.com/user-attachments/assets/1af0376d-dad7-408d-b6d9-ef3662f9298f" />
+
+- Binary logistic regression (convex ML task)
+
+<img width="615" height="475" alt="Binary logistic regression benchmark" src="https://github.com/user-attachments/assets/2d58857f-f0e4-4d8d-a659-5f944f2da86a" />
+
+These plots are useful historical context for the project. The newer benchmark
+suite below is designed to make the same research story more reproducible:
+multi-seed runs, saved CSV/JSON metrics, explicit timing, and cleaner notebooks.
+
+---
 
 ## Benchmark Philosophy
 
@@ -42,32 +91,16 @@ Report full cost:
 - eigendecomposition/trust-region overhead for the NumPy optimizer path
 - total wall-clock training time
 
-## Final Notebook Suite
+The intended claim is deliberately narrow:
 
-Use these notebooks for publication-facing analysis:
+> DiagonalOptimiser is a lightweight curvature-aware optimizer designed to
+> improve convergence and robustness on difficult optimization problems while
+> remaining competitive on neural network training.
 
-- `notebooks/01_synthetic_optimization.ipynb`
-  - ill-conditioned quadratics
-  - Rosenbrock/difficult landscape analysis
-  - convergence and stability tables
+This repository should not be read as claiming that DiagonalOptimiser always
+beats AdamW or is always faster.
 
-- `notebooks/02_neural_network_training.ipynb`
-  - MNIST/FashionMNIST MLP/CNN benchmark scaffold
-  - intentionally refuses to report weak substitute results if dataset tooling is missing
-
-- `notebooks/03_transformer_training.ipynb`
-  - TinyGPT training
-  - learning verification
-  - throughput, memory, and optimizer overhead tables
-
-- `notebooks/04_analysis.ipynb`
-  - combined tables
-  - combined interpretation
-  - limitations and conclusions
-
-Legacy exploratory experiments are kept under `archive/legacy_experiments/`.
-They are not part of the final evidence because they are single-seed,
-interactive, duplicated, or do not save complete metrics.
+---
 
 ## Repository Structure
 
@@ -80,17 +113,50 @@ DiagonalOpti/
 │   └── llm_benchmark/          # TinyGPT benchmark package
 ├── configs/
 │   ├── llm_benchmark.json
-│   └── llm_benchmark_smoke.json
+│   ├── llm_benchmark_smoke.json
+│   └── llm_benchmark_colab_tuned.json
 ├── notebooks/
 │   ├── 01_synthetic_optimization.ipynb
 │   ├── 02_neural_network_training.ipynb
 │   ├── 03_transformer_training.ipynb
 │   └── 04_analysis.ipynb
-├── archive/legacy_experiments/
+├── archive/legacy_experiments/ # Original exploratory scripts/notebook
 ├── paper/
 ├── results/                    # Generated outputs, not tracked
 └── README.md
 ```
+
+Legacy exploratory experiments are kept under `archive/legacy_experiments/`
+for provenance. They are not the final evidence because they are single-seed,
+interactive, duplicated, or do not save complete metrics.
+
+---
+
+## Final Notebook Suite
+
+Use these notebooks for publication-facing analysis:
+
+- `notebooks/01_synthetic_optimization.ipynb`
+  - ill-conditioned quadratics
+  - Rosenbrock/difficult landscape analysis
+  - convergence and stability tables
+
+- `notebooks/02_neural_network_training.ipynb`
+  - MLP/CNN-style image benchmark
+  - MNIST/FashionMNIST support when `torchvision` is available
+  - synthetic image smoke fallback for pipeline checks
+
+- `notebooks/03_transformer_training.ipynb`
+  - TinyGPT training
+  - learning verification
+  - throughput, memory, and optimizer overhead tables
+
+- `notebooks/04_analysis.ipynb`
+  - combined tables
+  - combined interpretation
+  - limitations and conclusions
+
+---
 
 ## Install
 
@@ -103,6 +169,8 @@ For the MNIST/FashionMNIST notebook, install torchvision too:
 ```bash
 pip install torchvision
 ```
+
+---
 
 ## Reproduce Experiments
 
@@ -124,9 +192,15 @@ TinyGPT full benchmark:
 python -m experiments.llm_benchmark.run --config configs/llm_benchmark.json
 ```
 
-The full TinyGPT config uses 5 seeds and duration multipliers of 1x, 3x, 5x,
-and 10x. Smoke results are only pipeline checks; do not use them as scientific
-evidence.
+TinyGPT held-out evaluation using the Colab-tuned learning rates:
+
+```bash
+python -m experiments.llm_benchmark.run --config configs/llm_benchmark_colab_tuned.json
+```
+
+Smoke results are only pipeline checks; do not use them as scientific evidence.
+
+---
 
 ## Hyperparameter Tuning Protocol
 
@@ -157,11 +231,13 @@ This writes:
 Use the tuned config for evaluation only after the tuning decision is fixed.
 Do not choose the best result from the final evaluation seeds.
 
+---
+
 ## What To Show On GitHub
 
-The repository can include smoke plots as pipeline examples, but label them
-clearly as smoke tests. Do not present one-seed or five-step runs as benchmark
-evidence.
+The original plots above are good context for the project. New smoke plots can
+also be included as pipeline examples, but label them clearly as smoke tests.
+Do not present one-seed or five-step runs as benchmark evidence.
 
 Recommended GitHub figures after full runs:
 
@@ -170,8 +246,7 @@ Recommended GitHub figures after full runs:
 - TinyGPT validation loss vs steps and wall-clock time
 - optimizer overhead table including DiagonalOptimiser curvature/HVP counts
 
-Current smoke outputs are useful for verifying the benchmark code, not for
-scientific claims.
+---
 
 ## Outputs
 
@@ -191,6 +266,8 @@ The TinyGPT runner also writes:
 - checkpoints
 - `results_table.md`
 
+---
+
 ## Metrics
 
 Every final benchmark should report:
@@ -206,6 +283,8 @@ Every final benchmark should report:
 - stability/failure counts
 - DiagonalOptimiser curvature/HVP/probe counts where available
 
+---
+
 ## Limitations
 
 The original DiagonalOptimiser is a NumPy function optimizer over `f(x)` and
@@ -220,3 +299,24 @@ algorithm.
 Small-scale benchmarks do not prove large-scale optimizer superiority. Report
 where DiagonalOptimiser helps, where it is competitive, and where its overhead
 is not justified.
+
+---
+
+## Future Work
+
+The optimizer's dominant computational overhead arises from the O(Nk)
+Hessian-vector product block required for the spectral curvature sketch.
+Reducing this cost is an important direction for improvement.
+
+Possible approaches include structured random sketches, sub-sampled curvature
+estimators, and GPU-efficient batching of HVP computations. These may preserve
+the quality of the low-rank curvature approximation while lowering per-step
+cost.
+
+Scaling the conditioner to larger modern architectures such as Transformers,
+CNNs, or diffusion models will require further architectural optimization. In
+particular, methods for distributing or decomposing curvature across layers,
+rather than forming a single N-dimensional sketch, could improve memory
+efficiency and reduce computation. Parallel HVP pipelines or block-diagonal
+curvature representations may also help avoid the need for global curvature
+sketches when N becomes extremely large.
