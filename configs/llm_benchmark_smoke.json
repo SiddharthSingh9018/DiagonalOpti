@@ -1,0 +1,43 @@
+{
+  "experiment_name": "tinygpt_optimizer_benchmark_smoke",
+  "output_dir": "results",
+  "seeds": [0],
+  "device": "auto",
+  "compile_model": false,
+  "model": {
+    "vocab_size": 128,
+    "block_size": 32,
+    "n_layer": 1,
+    "n_head": 2,
+    "n_embd": 48,
+    "dropout": 0.0
+  },
+  "data": {
+    "dataset": "builtin_text",
+    "data_dir": "data",
+    "train_tokens": 20000,
+    "val_tokens": 4000,
+    "synthetic_noise": 0.08
+  },
+  "train": {
+    "batch_size": 4,
+    "base_steps": 5,
+    "duration_multipliers": [1],
+    "eval_interval": 1,
+    "checkpoint_interval": 5,
+    "grad_clip": 1.0,
+    "target_losses": [4.8, 4.6, 4.4],
+    "wall_clock_checkpoints_sec": [1.0, 5.0, 10.0]
+  },
+  "optimizers": {
+    "names": ["AdamW", "Lion", "Sophia", "Muon", "DiagonalOptimiser"],
+    "learning_rates": {
+      "AdamW": 0.0003,
+      "Lion": 0.0001,
+      "Sophia": 0.0003,
+      "Muon": 0.0002,
+      "DiagonalOptimiser": 0.0003
+    },
+    "weight_decay": 0.01
+  }
+}
