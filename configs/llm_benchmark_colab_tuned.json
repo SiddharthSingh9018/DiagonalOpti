@@ -1,0 +1,43 @@
+{
+  "experiment_name": "tinygpt_optimizer_benchmark_colab_tuned",
+  "output_dir": "results",
+  "seeds": [2, 3, 4, 5, 6],
+  "device": "auto",
+  "compile_model": false,
+  "model": {
+    "vocab_size": 256,
+    "block_size": 128,
+    "n_layer": 2,
+    "n_head": 4,
+    "n_embd": 128,
+    "dropout": 0.0
+  },
+  "data": {
+    "dataset": "builtin_text",
+    "data_dir": "data",
+    "train_tokens": 200000,
+    "val_tokens": 20000,
+    "synthetic_noise": 0.08
+  },
+  "train": {
+    "batch_size": 16,
+    "base_steps": 1000,
+    "duration_multipliers": [1, 3, 5, 10],
+    "eval_interval": 100,
+    "checkpoint_interval": 1000,
+    "grad_clip": 1.0,
+    "target_losses": [4.0, 3.5, 3.0],
+    "wall_clock_checkpoints_sec": [30.0, 60.0, 120.0]
+  },
+  "optimizers": {
+    "names": ["AdamW", "Lion", "Sophia", "Muon", "DiagonalOptimiser"],
+    "learning_rates": {
+      "AdamW": 0.001,
+      "Lion": 0.0003,
+      "Sophia": 0.0003,
+      "Muon": 0.0005,
+      "DiagonalOptimiser": 0.001
+    },
+    "weight_decay": 0.01
+  }
+}
