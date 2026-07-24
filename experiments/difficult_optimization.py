@@ -58,6 +58,29 @@ def quadratic_problem(dim, condition_number, seed):
     return f, grad, x0
 
 
+def rosenbrock_problem(seed, variant):
+    rng = np.random.default_rng(seed + 10_000)
+    starts = {
+        "classic": np.array([-1.2, 1.0]),
+        "wide_valley": np.array([-1.5, 1.5]),
+        "near_saddle": np.array([0.0, 0.0]),
+    }
+    x0 = starts[variant] + 0.05 * rng.normal(size=2)
+
+    def f(x):
+        return float((1.0 - x[0]) ** 2 + 100.0 * (x[1] - x[0] ** 2) ** 2)
+
+    def grad(x):
+        return np.array(
+            [
+                -2.0 * (1.0 - x[0]) - 400.0 * x[0] * (x[1] - x[0] ** 2),
+                200.0 * (x[1] - x[0] ** 2),
+            ]
+        )
+
+    return f, grad, x0
+
+
 def make_deep_mlp_problem(seed, n=256, d_in=16, hidden=32, depth=4, d_out=1, noise=0.05):
     rng = np.random.default_rng(seed)
     scales = np.geomspace(1.0, 100.0, d_in)
@@ -174,6 +197,7 @@ def run_suite(output_dir, seeds, max_iter):
     summaries = []
     optimizers = ["Adam", "SGD", "DiagonalOptimiser"]
     quad_targets = [1e-2, 1e-4, 1e-6]
+    rosenbrock_targets = [1.0, 0.1, 0.01]
     mlp_targets = [0.05, 0.02, 0.01]
 
     for seed in seeds:
@@ -186,6 +210,34 @@ def run_suite(output_dir, seeds, max_iter):
                     metrics.append({"run_id": run_id, "problem": "quadratic", "condition_number": cond, "optimizer": opt, "seed": seed, "step": step, "loss": float(loss)})
                 summary = {"run_id": run_id, "problem": "quadratic", "condition_number": cond, "optimizer": opt, "seed": seed, "iters": iters}
                 summary.update(summarize_losses(losses, elapsed, quad_targets))
+                summaries.append(summary)
+
+        for variant in ["classic", "wide_valley", "near_saddle"]:
+            f, grad, x0 = rosenbrock_problem(seed, variant)
+            for opt in optimizers:
+                iters, losses, elapsed = run_optimizer(opt, f, grad, x0.copy(), max_iter)
+                run_id = f"rosenbrock_{variant}_{opt}_seed{seed}"
+                for step, loss in enumerate(losses, start=1):
+                    metrics.append(
+                        {
+                            "run_id": run_id,
+                            "problem": "rosenbrock",
+                            "condition_number": variant,
+                            "optimizer": opt,
+                            "seed": seed,
+                            "step": step,
+                            "loss": float(loss),
+                        }
+                    )
+                summary = {
+                    "run_id": run_id,
+                    "problem": "rosenbrock",
+                    "condition_number": variant,
+                    "optimizer": opt,
+                    "seed": seed,
+                    "iters": iters,
+                }
+                summary.update(summarize_losses(losses, elapsed, rosenbrock_targets))
                 summaries.append(summary)
 
         f, grad, x0 = make_deep_mlp_problem(seed)
@@ -231,7 +283,14 @@ def plot_difficult(metrics, summaries, plot_dir):
     for problem in sorted(set(row["problem"] for row in metrics)):
         plt.figure(figsize=(8, 5))
         for opt in sorted(set(row["optimizer"] for row in metrics)):
-            rows = [r for r in metrics if r["problem"] == problem and r["optimizer"] == opt and (problem != "quadratic" or str(r["condition_number"]) == "1000")]
+            rows = [
+                r
+                for r in metrics
+                if r["problem"] == problem
+                and r["optimizer"] == opt
+                and (problem != "quadratic" or str(r["condition_number"]) == "1000")
+                and (problem != "rosenbrock" or str(r["condition_number"]) == "classic")
+            ]
             by_step = defaultdict(list)
             for row in rows:
                 by_step[int(row["step"])].append(float(row["loss"]))

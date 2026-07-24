@@ -86,6 +86,9 @@ Use small but real training tasks:
 Report full cost:
 
 - optimizer step time
+- cumulative optimizer step time
+- training compute time excluding optimizer step
+- evaluation time
 - curvature computation time when available
 - Hessian-vector product/probe counts
 - eigendecomposition/trust-region overhead for the NumPy optimizer path
@@ -301,6 +304,9 @@ Common files:
 - `aggregate.csv`
 - `aggregate.json`
 - plots under a `plots/` directory
+
+See `results/README.md` for the distinction between smoke, tuning, and final
+evaluation outputs.
 
 The TinyGPT runner also writes:
 

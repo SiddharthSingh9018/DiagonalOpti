@@ -88,6 +88,9 @@ def train_run(config, optimizer_name: str, seed: int, duration_multiplier: int, 
     rows = []
     stable = True
     total_tokens = 0
+    optimizer_step_time_total = 0.0
+    train_compute_time_total = 0.0
+    eval_time_total = 0.0
     start_time = time.perf_counter()
 
     for step in range(1, max_steps + 1):
@@ -108,6 +111,9 @@ def train_run(config, optimizer_name: str, seed: int, duration_multiplier: int, 
         g_norm = grad_norm(model.parameters())
         if config.train.grad_clip > 0:
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.train.grad_clip)
+        if device.type == "cuda":
+            torch.cuda.synchronize()
+        before_optimizer = time.perf_counter()
 
         if optimizer_name == "DiagonalOptimiser":
             optimizer.step(closure=closure)
@@ -116,8 +122,11 @@ def train_run(config, optimizer_name: str, seed: int, duration_multiplier: int, 
 
         if device.type == "cuda":
             torch.cuda.synchronize()
+        optimizer_step_time = time.perf_counter() - before_optimizer
+        optimizer_step_time_total += optimizer_step_time
 
         step_time = time.perf_counter() - step_start
+        train_compute_time_total += step_time - optimizer_step_time
         total_tokens += x.numel()
         train_loss = float(loss.detach().cpu())
         if not math.isfinite(train_loss) or not math.isfinite(g_norm):
@@ -125,7 +134,11 @@ def train_run(config, optimizer_name: str, seed: int, duration_multiplier: int, 
 
         should_eval = step == 1 or step % config.train.eval_interval == 0 or step == max_steps or not stable
         if should_eval:
+            eval_start = time.perf_counter()
             val_loss = evaluate(model, val_data, config.train.batch_size, config.model.block_size, device)
+            if device.type == "cuda":
+                torch.cuda.synchronize()
+            eval_time_total += time.perf_counter() - eval_start
             elapsed = time.perf_counter() - start_time
             peak_memory = torch.cuda.max_memory_allocated() / 1024**2 if device.type == "cuda" else 0.0
             stats = optimizer_stats(optimizer)
@@ -140,6 +153,10 @@ def train_run(config, optimizer_name: str, seed: int, duration_multiplier: int, 
                     "val_loss": val_loss,
                     "wall_time_sec": elapsed,
                     "step_time_sec": step_time,
+                    "optimizer_step_time_sec": optimizer_step_time,
+                    "optimizer_step_time_total_sec": optimizer_step_time_total,
+                    "train_compute_time_total_sec": train_compute_time_total,
+                    "eval_time_total_sec": eval_time_total,
                     "tokens_per_sec": total_tokens / max(elapsed, 1e-9),
                     "peak_memory_mb": peak_memory,
                     "grad_norm": g_norm,
